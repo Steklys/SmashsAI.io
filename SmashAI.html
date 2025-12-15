@@ -1,0 +1,150 @@
+> W1zk:
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>SmashAI</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#6a00ff">
+
+<style>
+:root{
+--bg:#0e0e13;
+--panel:#15151f;
+--accent:#6a00ff;
+--text:#fff;
+--muted:#9a9ab3;
+}
+*{box-sizing:border-box;font-family:system-ui,-apple-system,BlinkMacSystemFont,sans-serif}
+body{margin:0;background:var(--bg);color:var(--text);height:100vh;overflow:hidden}
+#app{display:flex;flex-direction:column;height:100%}
+header{height:60px;background:linear-gradient(90deg,#6a00ff,#8b5cff);display:flex;align-items:center;justify-content:center;font-weight:700;letter-spacing:1px}
+#chat{flex:1;overflow-y:auto;padding:16px}
+.msg{max-width:85%;margin-bottom:12px;padding:12px 14px;border-radius:14px;line-height:1.4;word-wrap:break-word;animation:fadeIn .25s ease}
+.user{background:var(--accent);margin-left:auto}
+.ai{background:var(--panel);border:1px solid #23233a}
+.system{text-align:center;color:var(--muted);font-size:13px;margin:10px 0}
+footer{display:flex;padding:12px;background:var(--panel);gap:10px}
+input{flex:1;padding:12px;border-radius:12px;border:none;outline:none;background:#0c0c15;color:white}
+button{padding:12px 18px;border:none;border-radius:12px;background:var(--accent);color:white;font-weight:600}
+#overlay{position:fixed;inset:0;background:linear-gradient(135deg,#6a00ff,#3a0ca3);display:flex;align-items:center;justify-content:center;z-index:100}
+#onboard{background:#0e0e13;padding:24px;border-radius:20px;width:90%;max-width:420px;text-align:center}
+#onboard h1{margin-top:0}
+#onboard input{width:100%;margin-top:12px}
+#onboard button{width:100%;margin-top:16px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+</style>
+</head>
+
+<body>
+
+<div id="overlay">
+  <div id="onboard">
+    <h1>SmashAI</h1>
+    <p>Введите имя для начала</p>
+    <input id="usernameInput" placeholder="Ваше имя">
+    <button onclick="start()">Начать</button>
+  </div>
+</div>
+
+<div id="app">
+  <header>SMASHAI</header>
+  <div id="chat"></div>
+  <footer>
+    <input id="input" placeholder="Сообщение...">
+    <button onclick="send()">▶</button>
+  </footer>
+</div>
+
+<script type="module">
+import { pipeline } from "https://cdn.jsdelivr.net/npm/@xenova/transformers";
+
+const chat=document.getElementById("chat");
+const input=document.getElementById("input");
+const overlay=document.getElementById("overlay");
+
+let ai;
+let username=localStorage.getItem("smash_user");
+
+function msg(t,c){const d=document.createElement("div");d.className="msg "+c;d.textContent=t;chat.appendChild(d);chat.scrollTop=chat.scrollHeight}
+function sys(t){const d=document.createElement("div");d.className="system";d.textContent=t;chat.appendChild(d)}
+
+async function loadAI(){
+sys("Загрузка SmashAI...");
+ai=await pipeline("text-generation","Xenova/gpt2");
+sys("SmashAI готов");
+msg("Привет, "+username+". Я SmashAI.","ai");
+}
+
+window.start=function(){
+const v=document.getElementById("usernameInput").value.trim();
+if(!v)return;
+username=v;
+localStorage.setItem("smash_user",username);
+overlay.style.display="none";
+loadAI();
+}
+
+if(username){overlay.style.display="none";loadAI();}
+
+window.send=async function(){
+const t=input.value.trim();
+if(!t||!ai)return;
+input.value="";
+msg(t,"user");
+save(t);
+msg("Думаю...","ai");
+const r=await ai(t,{max_new_tokens:90});
+chat.lastChild.remove();
+msg(r[0].generated_text,"ai");
+}
+
+function save(t){
+let m=JSON.parse(localStorage.getItem("smash_mem")||"[]");
+m.push(t);
+localStorage.setItem("smash_mem",JSON.stringify(m));
+}
+
+/* ===== PWA INLINE ===== */
+
+const manifest={
+name:"SmashAI",
+short_name:"SmashAI",
+start_url:".",
+display:"standalone",
+background_color:"#0e0e13",
+theme_color:"#6a00ff",
+icons:[{
+src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAIAAQMAAADOtka5AAAABlBMVEUAAAD///+l2Z/dAAAAAnRSTlMA/1uRIrUAAABLSURBVHgB7cEBDQAAAMKg909tDjegAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgG8F4QAB9hfvsQAAAABJRU5ErkJggg==",
+sizes:"512x512",
+type:"image/png"
+}]
+};
+
+const manifestBlob=new Blob([JSON.
+
+> W1zk:
+stringify(manifest)],{type:"application/json"});
+const manifestURL=URL.createObjectURL(manifestBlob);
+const link=document.createElement("link");
+link.rel="manifest";
+link.href=manifestURL;
+document.head.appendChild(link);
+
+if("serviceWorker"in navigator){
+const swCode=`
+self.addEventListener("install",e=>{
+e.waitUntil(caches.open("smashai").then(c=>c.addAll(["./"])));
+});
+self.addEventListener("fetch",e=>{
+e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)));
+});
+`;
+const swBlob=new Blob([swCode],{type:"application/javascript"});
+const swURL=URL.createObjectURL(swBlob);
+navigator.serviceWorker.register(swURL);
+}
+</script>
+
+</body>
+</html>
